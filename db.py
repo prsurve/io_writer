@@ -89,8 +89,8 @@ def drop_table():
 
 def create_table():
     sql = f'''CREATE TABLE {DB_TABLE_NAME}(
-       srno int NOT NULL AUTO_INCREMENT,
-       dt DATETIME NOT NULL,
+       srno int NOT NULL AUTO_INCREMENT PRIMARY KEY,
+       dt DATETIME,
        DATA LONGTEXT, host varchar(255)
     )'''
 
