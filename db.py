@@ -66,7 +66,7 @@ def retry(ExceptionToCheck, tries=4, delay=3, backoff=2, logger=None):
     return deco_retry
 
 
-@retry(ExceptionToCheck=mysql.connector.errors.InterfaceError, tries=20, delay=10, logger=logging)
+@retry(ExceptionToCheck=mysql.connector.errors.InterfaceError, tries=10, delay=5, logger=logging)
 def create_db():
     mydb = mysql.connector.connect(
         host=DB_HOST,
