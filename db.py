@@ -14,7 +14,7 @@ from datetime import datetime
 from functools import wraps
 from faker import Faker
 
-logging.basicConfig(format='%(asctime)s - %(threadName)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
+logging.basicConfig(format='%(asctime)s - %(threadName)s - %(name)s - %(levelname)s - %(message)s', level=logging.DEBUG)
 
 DB_USER = os.environ.get('MYSQL_DB_USER')
 DB_PASSWORD = os.environ.get('MYSQL_DB_PASSWORD')
