@@ -158,9 +158,7 @@ if __name__ == "__main__":
         password=DB_PASSWORD,
         database=DB_NAME
     )
-    logging.info(mydb)
     mycursor = mydb.cursor()
-    logging.info(mycursor)
 
     try:
         create_table()
