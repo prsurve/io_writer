@@ -5,12 +5,14 @@ import os
 import logging
 import time
 
-from datetime import datetime
+
 import uuid
 import secrets
 import string
 import socket
+from datetime import datetime
 from functools import wraps
+from faker import Faker
 
 logging.basicConfig(format='%(asctime)s - %(threadName)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
@@ -19,6 +21,7 @@ DB_PASSWORD = os.environ.get('MYSQL_DB_PASSWORD')
 DB_HOST = os.environ.get('MYSQL_DB_HOST')
 DB_NAME = "mydatabase"
 DB_TABLE_NAME = "WORKLOAD"
+fake = Faker()
 
 
 def retry(ExceptionToCheck, tries=4, delay=3, backoff=2, logger=None):
@@ -88,11 +91,21 @@ def drop_table():
 
 
 def create_table():
-    sql = f'''CREATE TABLE {DB_TABLE_NAME}(
+    sql = f"""CREATE TABLE {DB_TABLE_NAME}(
        srno int NOT NULL AUTO_INCREMENT PRIMARY KEY,
        dt DATETIME,
-       DATA LONGTEXT, host varchar(255)
-    )'''
+       DATA LONGTEXT, 
+       host varchar(255),
+       first_name varchar(50) COLLATE utf8_unicode_ci NOT NULL,
+       last_name varchar(50) COLLATE utf8_unicode_ci NOT NULL,
+       email varchar(100) COLLATE utf8_unicode_ci NOT NULL,
+       zipcode int(5) NOT NULL,
+       city varchar(100) COLLATE utf8_unicode_ci NOT NULL,
+       country varchar(100) COLLATE utf8_unicode_ci NOT NULL,
+       birthdate date NOT NULL,
+       latitude varchar(100) COLLATE utf8_unicode_ci NOT NULL,
+       longitude varchar(100) COLLATE utf8_unicode_ci NOT NULL
+    )ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci; """
 
     mycursor.execute(sql)
 
@@ -109,12 +122,14 @@ def insert_data(sleep=5):
     while True:
         try:
             now = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
-            sql = f"INSERT INTO {DB_TABLE_NAME} (dt, DATA, host) VALUES (%s, %s, %s)"
+            sql = f"INSERT INTO {DB_TABLE_NAME} (dt, DATA, host, first_name, last_name, email, zipcode, city, country, birthdate, latitude, longitude) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
             res = ''.join(secrets.choice(string.ascii_uppercase + string.digits)
                           for i in range(10))
             host_name = socket.gethostname()
-            val = (now, res, host_name)
-            logging.info(f"Data Written {now} {res} {host_name}")
+            row = [fake.first_name(), fake.last_name(), fake.email(), \
+               fake.postcode(), fake.city(), fake.country(), fake.date_of_birth(), str(fake.latitude()), str(fake.longitude())]
+            val = (now, res, host_name,row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7],row[8] )
+            logging.info(f"Data Written {now} {res} {host_name} {row[1]}, {row[2]}, {row[3]}, {row[4]}, {row[5]}, {row[6]}, {row[7]}, {row[8]}")
             mycursor.execute(sql, val)
             mydb.commit()
             time.sleep(sleep)
