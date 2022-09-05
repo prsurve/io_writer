@@ -104,7 +104,7 @@ def create_table():
        country varchar(100) COLLATE utf8_unicode_ci NOT NULL,
        birthdate date NOT NULL,
        latitude varchar(100) COLLATE utf8_unicode_ci NOT NULL,
-       longitude varchar(100) COLLATE utf8_unicode_ci NOT NULL,
+       longitude varchar(100) COLLATE utf8_unicode_ci NOT NULL
     )ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci; """
 
     mycursor.execute(sql)
