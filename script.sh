@@ -11,42 +11,47 @@ oc project $initial_workload_ns
 
 
 echo "Creating Snapshot"
+snapshot_array=()
 for i in {1..25}
 do
+    snapshot_name=$pvc_name-$i-snp-`date -u "+%Y-%m-%d-%H-%M-%S-%3N"`
+    snapshot_array+=("$snapshot_name")
     echo "apiVersion: snapshot.storage.k8s.io/v1
 kind: VolumeSnapshot
 metadata:
-  name: $pvc_name-$i-snapshot
+  name: $snapshot_name
 spec:
   volumeSnapshotClassName: ocs-storagecluster-rbdplugin-snapclass
   source:
     persistentVolumeClaimName: $pvc_name-$i
 " | kubectl apply -f -
-
+sleep 1
 done
+
+sleep 10
 
 echo "Checking VolumeSnapshot status"
 pvc_snapshot_array=() # Array
-for i in {1..25}
+for i in "${snapshot_array[@]}"
 do
-    output=$(oc get volumesnapshots $pvc_name-$i-snapshot -o json |jq -r .status.readyToUse)
+    output=$(oc get volumesnapshots $i -o json |jq -r .status.readyToUse)
     if [ "$output" == "true" ]
     then
-        echo "$pvc_name-$i-snapshot is in Ready State"
-        pvc_snapshot_array+=("$pvc_name-$i-snapshot")
+        echo "$i is in Ready State"
+        pvc_snapshot_array+=("$i")
     else
         for timeout on {1..10}
         do
-            output_time=$(oc get volumesnapshots $pvc_name-$i-snapshot -o json |jq -r .status.readyToUse)
+            output_time=$(oc get volumesnapshots $i -o json |jq -r .status.readyToUse)
             if [ "$output_time" == "true" ]
             then
-                echo "$pvc_name-$i-snapshot is in Ready State"
-                pvc_snapshot_array+=("$pvc_name-$i-snapshot")
+                echo "$i is in Ready State"
+                pvc_snapshot_array+=("$i")
+                break
             else
                 sleep 10
             fi
         done
-        echo "$pvc_name-$i-snapshot Failed to reach Ready State"            
     fi
 done
 
@@ -57,7 +62,7 @@ do
     echo "apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: $i-snapshot-pvc
+  name: $i-sp-pvc
   labels:
     snapshot: bz
 spec:
@@ -76,21 +81,22 @@ done
 
 echo "Checking PVC status created from Snapshot"
 pod_array=()
-for i in $(oc get pvc --no-headers -l snapshot=bz|awk '{print$1}')
+for i in "${pvc_snapshot_array[@]}"
 do
-    output=$(oc get pvc $i -o json |jq -r .status.phase)
+    output=$(oc get pvc $i-sp-pvc -o json |jq -r .status.phase)
     if [ "$output" == "Bound" ]
     then
         echo "$i is in Bound state"
-        pod_array+=("$i")
+        pod_array+=("$i-sp-pvc")
     else
         for timeout on {1..15}
         do
-            output_time=$(oc get pvc $i -o json |jq -r .status.phase)
+            output_time=$(oc get pvc $i-sp-pvc -o json |jq -r .status.phase)
             if [ "$output_time" == "Bound" ]
             then
-                echo "$i is in Bound state"
-                pod_array+=("$i")
+                echo "$i-sp-pvc is in Bound state"
+                pod_array+=("$i-sp-pvc")
+                break
             else
                 sleep 10
             fi
@@ -101,43 +107,21 @@ done
 
 echo "Creating Pod's" 
 
-for i in "${pvc_snapshot_array[@]}"
+for i in "${pod_array[@]}"
 do
-    echo "apiVersion: apps/v1
-kind: Deployment
+    echo "apiVersion: v1
+kind: Pod
 metadata:
   name: $i-pod
+  labels:
+    snapshot: bz
 spec:
-  selector:
-    matchLabels:
-      app: $i
-      snapshot: bz
-  strategy:
-    type: Recreate
-  template:
-    metadata:
-      labels:
-        snapshot: bz
-        app: $i
-    spec:
-      containers:
-      - command:
-        - sh
-        - -c
-        - /run-io.sh
-        image: quay.io/prsurve/busybox:noflag
-        imagePullPolicy: Always
-        name: busybox
-        volumeMounts:
-        - mountPath: /mnt/test
-          name: mypvc
-      volumes:
-      - name: mypvc
-        persistentVolumeClaim:
-          claimName: $i
-          readOnly: false " | kubectl apply -f -
+  containers:
+   - name: web-server
+     image: quay.io/ocsci/nginx:latest" | kubectl apply -f -
 done
 
+sleep 60
 
 echo "Checking pod status"
 pending_pod_array=()
@@ -154,6 +138,7 @@ do
             if [ "$output_time" == "Running" ]
             then
                 echo "$i is in Running state"
+                break
             else
                 sleep 10
             fi
@@ -162,6 +147,7 @@ do
         pending_pod_array+=("$i")        
     fi
 done
+
 
 echo "Collecting logs of non running pods if any"
 for i in "${pending_pod_array[@]}"
@@ -174,7 +160,7 @@ do
     oc delete deployment $i --force --grace-period=0
 done
 sleep 20
-for i in $(oc get pvc -l snapshot=bz --no-headers|awk '{print$1}')
+for i in "${pod_array[@]}"
 do
     oc delete pvc $i --force --grace-period=0
 done
@@ -189,3 +175,6 @@ sleep 20
 unset pvc_snapshot_array
 unset pod_array
 unset pending_pod_array
+
+
+sleep 300
