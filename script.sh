@@ -79,6 +79,8 @@ spec:
 " | kubectl apply -f -
 done
 
+sleep 30
+
 echo "Checking PVC status created from Snapshot"
 pod_array=()
 for i in "${pvc_snapshot_array[@]}"
