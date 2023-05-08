@@ -137,6 +137,21 @@ def insert_data(sleep=5):
             logging.error(e)
 
 
+def create_user():
+    create_user_query = "CREATE USER 'dataviewer'@'%' IDENTIFIED WITH mysql_native_password BY 'dataviewer'"
+
+    #   Execute the CREATE USER query
+    mycursor.execute(create_user_query)
+
+
+def grant_privilage():
+    grant_query = "GRANT ALL PRIVILEGES ON *.* TO 'dataviewer'@'%' WITH GRANT OPTION"
+    mycursor.execute(grant_query)
+                                                                                                                       
+# Commit the changes to the database
+    mydb.commit()
+
+
 def show_data():
     sql = f"SELECT * FROM {DB_TABLE_NAME}"
     mycursor.execute(sql)
@@ -163,7 +178,14 @@ if __name__ == "__main__":
     try:
         create_table()
     except mysql.connector.errors.ProgrammingError as e:
-        logging.info("Table already exists")
+        logging.error("Table already exists")
+
+    try:
+        create_user()
+    except mysql.connector.Error as error:
+      logging.error(f"Error creating user: {error}")
+    
+    grant_privilage()
 
     # desc_table()
     logging.info("Writting Data")
