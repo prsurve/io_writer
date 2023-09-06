@@ -41,18 +41,18 @@ jobs:
 
       - name: Print image url
         run: echo "Image pushed to ${{ steps.push-to-quay.outputs.registry-paths }}"
-    build_containers_mongodb:
+   build_containers_mongodb:
         if: github.event.pull_request.merged == true 
         runs-on: ubuntu-latest
         steps:
         - name: Get Code
-            uses: actions/checkout@v3
+          uses: actions/checkout@v3
         - name: Set up QEMU
-            uses: docker/setup-qemu-action@v2.2.0
+          uses: docker/setup-qemu-action@v2.2.0
         - name: Buildah Action
-            id: build-image
-            uses: redhat-actions/buildah-build@v2
-            with:
+          id: build-image
+          uses: redhat-actions/buildah-build@v2
+          with:
             image: mongodb_data_write
             tags: ${{ github.base_ref }}
             # archs: 386, amd64, arm/v6, arm/v7, arm64/v8, ppc64le, s390x
@@ -61,9 +61,9 @@ jobs:
             containerfiles: |
                 ./Dockerfile_mongodb
         - name: Push To quay.io
-            id: push-to-quay
-            uses: redhat-actions/push-to-registry@v2.7
-            with:
+          id: push-to-quay
+          uses: redhat-actions/push-to-registry@v2.7
+          with:
             image: ${{ steps.build-image.outputs.image }}
             tags: ${{ steps.build-image.outputs.tags }}
             username: ${{ env.REGISTRY_USER }}
@@ -71,4 +71,4 @@ jobs:
             registry: ${{ env.IMAGE_REGISTRY }}
     
         - name: Print image url
-            run: echo "Image pushed to ${{ steps.push-to-quay.outputs.registry-paths }}"
+          run: echo "Image pushed to ${{ steps.push-to-quay.outputs.registry-paths }}"
