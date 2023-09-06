@@ -17,7 +17,8 @@ logging.basicConfig(
 DB_USER = os.environ.get("MONGO_DB_USER")
 DB_PASSWORD = os.environ.get("MONGO_DB_PASSWORD")
 DB_HOST = os.environ.get("MONGO_DB_HOST")
-MONGO_URI = f"mongodb://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:27017/"
+DB_PORT = os.environ.get("MONGO_DB_PORT")
+MONGO_URI = f"mongodb://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/"
 DB_NAME = "mycollection"
 MONGO_COLLECTION_NAME = "mycollection"
 fake = Faker()
@@ -70,6 +71,7 @@ def insert_random_data():
         collection.insert_one(data)
         logging.info(f"Inserted data: {data}")
         time.sleep(5)
+    logging.info('\n')
 
 
 # Read random data from MongoDB
@@ -86,6 +88,7 @@ def read_random_data():
     else:
         random_doc = collection.find_one()
         logging.info(f"Read data: {random_doc}")
+    logging.info('\n')
 
 
 if __name__ == "__main__":
