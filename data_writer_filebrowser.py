@@ -29,7 +29,7 @@ METRICS_PORT = int(os.getenv("METRICS_PORT", "8081"))
 # 🌐 Dynamic File Browser URL Discovery
 # ==========================================================
 service_host = os.getenv("FILEBROWSER_SERVICE_HOST")
-service_port = os.getenv("FILEBROWSER_SERVICE_PORT", "80")
+service_port = os.getenv("FILEBROWSER_SERVICE_PORT", "8080")
 
 if service_host:
     BASE_URL = f"http://{service_host}:{service_port}"
