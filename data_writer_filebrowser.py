@@ -114,7 +114,7 @@ def run_curl_with_retry(cmd_func, *args, **kwargs):
     token = kwargs.get("token")
     for attempt in range(1, MAX_RETRIES + 1):
         code = cmd_func(*args, token=token)
-        if code == "403":
+        if code in ("401", "403"):
             print(f"⚠️ Got 403 — re-logging in (attempt {attempt}/{MAX_RETRIES})")
             token = get_api_token(BASE_URL, api_username=API_USER, api_password=API_PASS)
             kwargs["token"] = token
@@ -132,7 +132,7 @@ def create_folder(folder_name, token):
         "curl", "-s", "-o", "/dev/null", "-w", "%{http_code}",
         "-X", "POST",
         f"{BASE_URL}/api/resources/{folder_name}/?override=false",
-        "-H", f"X-Auth:{token}",
+        "-H", f"Authorization: Bearer {token}",
         "-H", "Content-Type: application/json",
         "--data", '{"type":"dir"}'
     ]
@@ -147,7 +147,7 @@ def upload_file(local_path, remote_folder, token):
     cmd = [
         "curl", "-s", "-o", "/dev/null", "-w", "%{http_code}",
         "-X", "POST",
-        "-H", f"X-Auth:{token}",
+        "-H", f"Authorization: Bearer {token}",
         "-F", f"files=@{local_path}",
         f"{BASE_URL}/api/resources/{remote_folder}/{file_name}?override=false"
     ]
