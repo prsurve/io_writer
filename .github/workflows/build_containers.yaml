@@ -75,7 +75,8 @@ jobs:
   #       - name: Print image url
   #         run: echo "Image pushed to ${{ steps.push-to-quay.outputs.registry-paths }}"
    build_containers_filebrowser:
-      if: github.event.pull_request.merged == true
+      # if: github.event.pull_request.merged == true
+      if: github.event.pull_request.created == true
       runs-on: ubuntu-latest
       steps:
       - name: Get Code
