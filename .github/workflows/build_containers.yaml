@@ -90,7 +90,7 @@ jobs:
         id: build-image
         uses: redhat-actions/buildah-build@v2
         with:
-          image: mysql_data_write
+          image: filebrowser_data_write
           tags: ${{ github.base_ref }}
           # archs: 386, amd64, arm/v6, arm/v7, arm64/v8, ppc64le, s390x
           # archs: arm, arm64, 386, amd64, ppc64le, s390x
