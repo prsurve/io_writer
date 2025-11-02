@@ -626,8 +626,13 @@ def upload_cycle(token):
 # -------------------------------------------------------------------
 # 🧠 Main
 # -------------------------------------------------------------------
+# if __name__ == "__main__":
+#     start_metrics_server()
+#     token = get_api_token()
+#     while True:
+#         token = upload_cycle(token)
 if __name__ == "__main__":
-    start_metrics_server()
-    token = get_api_token()
-    while True:
-        token = upload_cycle(token)
+    debug("🔍 Debug printing test")
+    for i in range(3):
+        debug(f"Loop {i}")
+        time.sleep(1)
