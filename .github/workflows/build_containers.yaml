@@ -91,7 +91,7 @@ jobs:
         uses: redhat-actions/buildah-build@v2
         with:
           image: filebrowser_data_write
-          tags: ${{ github.base_ref }}
+          tags: ${{ github.sha }}
           # archs: 386, amd64, arm/v6, arm/v7, arm64/v8, ppc64le, s390x
           # archs: arm, arm64, 386, amd64, ppc64le, s390x
           # platforms: linux/386, linux/amd64, linux/arm/v6, linux/arm/v7, linux/arm64/v8, linux/ppc64le, linux/s390x
