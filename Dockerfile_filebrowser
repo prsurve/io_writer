@@ -3,5 +3,5 @@ RUN apt-get update -qq && apt-get install -y -qq curl coreutils && \
     pip install --no-cache-dir faker && \
     rm -rf /var/lib/apt/lists/*
 WORKDIR /app
-COPY filebrowser_curl_client_cycle_metrics.py .
+COPY data_writer_filebrowser ./filebrowser_curl_client_cycle_metrics.py
 CMD ["python", "/app/filebrowser_curl_client_cycle_metrics.py"]

@@ -6,6 +6,8 @@ on:
       # - closed
       - opened
       - reopened
+      - synchronize
+
 
 # on: pull_request
 env:
