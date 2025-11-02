@@ -445,7 +445,8 @@ def debug(msg):
     if os.getenv("DEBUG", "false").lower() in ("true", "1", "yes"):
         print(f"[DEBUG {datetime.utcnow().isoformat()}] {msg}", flush=True)
 
-DEBUG = os.getenv("DEBUG", "false").lower() in ("true", "1", "yes")
+# DEBUG = os.getenv("DEBUG", "false").lower() in ("true", "1", "yes")
+DEBUG = "true"
 
 UPLOAD_MINUTES = int(os.getenv("UPLOAD_MINUTES", "5"))
 COOLDOWN_MINUTES = int(os.getenv("COOLDOWN_MINUTES", "5"))
