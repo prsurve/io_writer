@@ -416,6 +416,7 @@
 
 
 
+#!/usr/bin/env python3
 import subprocess
 import json
 import os
@@ -429,24 +430,31 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 import threading
 import sys
 
-# ==========================================================
-# ⚙️ Global Config
-# ==========================================================
-fake = Faker()
+# -------------------------------------------------------------------
+# 🔧 Environment setup
+# -------------------------------------------------------------------
+os.environ["PYTHONUNBUFFERED"] = "1"
 sys.stdout.reconfigure(line_buffering=True)
 sys.stderr.reconfigure(line_buffering=True)
+fake = Faker()
+
+def log(msg):
+    print(f"[{datetime.utcnow().isoformat()}] {msg}", flush=True)
+
+def debug(msg):
+    if os.getenv("DEBUG", "false").lower() in ("true", "1", "yes"):
+        print(f"[DEBUG {datetime.utcnow().isoformat()}] {msg}", flush=True)
+
+DEBUG = os.getenv("DEBUG", "false").lower() in ("true", "1", "yes")
 
 UPLOAD_MINUTES = int(os.getenv("UPLOAD_MINUTES", "5"))
 COOLDOWN_MINUTES = int(os.getenv("COOLDOWN_MINUTES", "5"))
-MAX_RETRIES = int(os.getenv("MAX_RETRIES", "3"))
 MIN_FILE_MB = int(os.getenv("MIN_FILE_MB", "100"))
 MAX_FILE_MB = int(os.getenv("MAX_FILE_MB", "1024"))
 UPLOAD_DELAY_SEC = int(os.getenv("UPLOAD_DELAY_SEC", "15"))
 CLEAN_TMP = os.getenv("CLEAN_TMP", "true").lower() in ("true", "1", "yes")
 METRICS_PORT = int(os.getenv("METRICS_PORT", "8081"))
-DEBUG = os.getenv("DEBUG", "false").lower() in ("true", "1", "yes")
 
-# Dynamic base URL discovery
 service_host = os.getenv("FILEBROWSER_SERVICE_HOST")
 service_port = os.getenv("FILEBROWSER_SERVICE_PORT", "80")
 BASE_URL = f"http://{service_host}:{service_port}" if service_host else os.getenv("BASE_URL", "http://localhost:8080")
@@ -454,29 +462,17 @@ BASE_URL = f"http://{service_host}:{service_port}" if service_host else os.geten
 API_USER = os.getenv("FB_USERNAME", "admin")
 API_PASS = os.getenv("FB_PASSWORD", "admin123")
 
-# ==========================================================
-# 🧠 Utility: Logging helper
-# ==========================================================
-def log(msg):
-    print(f"[{datetime.utcnow().isoformat()}] {msg}", flush=True)
+log(f"🌐 File Browser base URL: {BASE_URL}")
+log(f"🔧 DEBUG={DEBUG} | UPLOAD_MIN={UPLOAD_MINUTES} | DELAY={UPLOAD_DELAY_SEC}s | FILE={MIN_FILE_MB}-{MAX_FILE_MB}MB | CLEAN_TMP={CLEAN_TMP}")
 
-def debug(msg):
-    if DEBUG:
-        print(f"[DEBUG] {msg}", flush=True)
-
-log(f"🌐 Using File Browser base URL: {BASE_URL}")
-log(f"📋 Config: UPLOAD_MINUTES={UPLOAD_MINUTES}, DELAY={UPLOAD_DELAY_SEC}s, FILE_SIZE={MIN_FILE_MB}-{MAX_FILE_MB}MB, CLEAN_TMP={CLEAN_TMP}")
-
-# ==========================================================
-# 📊 Metrics
-# ==========================================================
+# -------------------------------------------------------------------
+# 📊 Metrics endpoint
+# -------------------------------------------------------------------
 metrics = {"files_uploaded": 0, "mb_uploaded": 0.0, "last_upload": ""}
 
 def metrics_text():
     return (
-        f"# HELP filebrowser_files_uploaded Total files uploaded\n"
         f"filebrowser_files_uploaded {metrics['files_uploaded']}\n"
-        f"# HELP filebrowser_mb_uploaded Total MB uploaded\n"
         f"filebrowser_mb_uploaded {metrics['mb_uploaded']}\n"
     )
 
@@ -493,41 +489,43 @@ class MetricsHandler(BaseHTTPRequestHandler):
 
 def start_metrics_server():
     server = HTTPServer(("", METRICS_PORT), MetricsHandler)
-    log(f"📡 Metrics endpoint running on port {METRICS_PORT}")
+    log(f"📡 Metrics on :{METRICS_PORT}/metrics")
     threading.Thread(target=server.serve_forever, daemon=True).start()
 
-# ==========================================================
-# 🔐 Login (handles noauth fallback)
-# ==========================================================
+# -------------------------------------------------------------------
+# 🔐 Login (handles --noauth mode)
+# -------------------------------------------------------------------
 def get_api_token():
     cmd = (
         f"curl -s -H 'Content-Type: application/json' "
         f"{BASE_URL}/api/login "
         f"--data '{{\"username\":\"{API_USER}\",\"password\":\"{API_PASS}\",\"recaptcha\":\"\"}}'"
     )
-    debug(f"Executing login: {cmd}")
-
+    if DEBUG:
+        cmd = cmd.replace("curl -s", "curl -v -s")
+    debug(f"Login cmd:\n{cmd}")
     result = subprocess.getoutput(cmd).strip()
 
     if not result:
-        log("⚠️ Login API returned empty response — assuming noauth mode.")
+        log("⚠️  Empty login response → assuming noauth mode.")
         return ""
 
     try:
         data = json.loads(result)
         token = data.get("jwt", "")
         if token:
-            log(f"✅ Got JWT token length={len(token)} (truncated): {token[:10]}...{token[-10:]}")
+            log(f"✅ JWT len={len(token)} token={token[:10]}...{token[-10:]}")
         else:
-            log("⚠️ No JWT returned — assuming noauth mode.")
+            log("⚠️  No JWT found → noauth mode.")
         return token
     except Exception as e:
-        log(f"⚠️ Login parse failed: {e}. Response: {result[:100]}...")
+        log(f"⚠️  Login parse failed ({e}) → assuming noauth.")
+        debug(f"Raw login output: {result[:200]}")
         return ""
 
-# ==========================================================
-# 📁 Create Folder
-# ==========================================================
+# -------------------------------------------------------------------
+# 📁 Folder creation
+# -------------------------------------------------------------------
 def create_folder(folder_name, token):
     folder_name = folder_name.strip("/")
     auth_header = f"--header X-Auth:{token}" if token else ""
@@ -536,14 +534,16 @@ def create_folder(folder_name, token):
         f"{BASE_URL}/api/resources/{folder_name}/?override=false "
         f"--data '{{}}' {auth_header}"
     )
-    debug(f"Create folder cmd: {cmd}")
+    if DEBUG:
+        cmd = cmd.replace("curl -s", "curl -v -s")
+    debug(f"Create folder cmd:\n{cmd}")
     code = subprocess.getoutput(cmd).strip()
-    log(f"📁 Folder '{folder_name}' HTTP {code}")
+    log(f"📁 Folder '{folder_name}' → HTTP {code}")
     return code
 
-# ==========================================================
-# 📤 Upload File
-# ==========================================================
+# -------------------------------------------------------------------
+# 📤 File upload
+# -------------------------------------------------------------------
 def upload_file(local_path, remote_folder, token):
     file_name = os.path.basename(local_path)
     auth_header = f"-H 'X-Auth:{token}'" if token else ""
@@ -553,35 +553,37 @@ def upload_file(local_path, remote_folder, token):
         f"-F 'files=@{local_path}' "
         f"{BASE_URL}/api/resources/{remote_folder}/{file_name}?override=false"
     )
-    debug(f"Upload cmd: {cmd}")
+    if DEBUG:
+        cmd = cmd.replace("curl -s", "curl -v -s")
+    debug(f"Upload cmd:\n{cmd}")
     code = subprocess.getoutput(cmd).strip()
     log(f"📤 Upload {file_name} → {remote_folder} [{code}]")
     return code
 
-# ==========================================================
-# 💾 File Generator
-# ==========================================================
+# -------------------------------------------------------------------
+# 💾 File creation
+# -------------------------------------------------------------------
 def create_large_file_safe(file_path, min_mb=100, max_mb=1024):
     free = shutil.disk_usage(tempfile.gettempdir()).free // (1024 * 1024)
     size_mb = min(max_mb, max(min_mb, int(free * 0.7)))
     chosen_mb = random.choice([min_mb, size_mb, size_mb // 2])
-    log(f"💾 Creating {chosen_mb} MB file at {file_path}")
+    log(f"💾 Writing {chosen_mb} MB → {file_path}")
     with open(file_path, "wb") as f:
         f.write(os.urandom(chosen_mb * 1024 * 1024))
     return chosen_mb
 
 def cleanup_tmp():
     tmp_dir = tempfile.gettempdir()
-    debug(f"Cleaning temp dir: {tmp_dir}")
+    debug(f"🧹 Cleaning tmp dir: {tmp_dir}")
     for f in os.listdir(tmp_dir):
         try:
             os.remove(os.path.join(tmp_dir, f))
         except Exception as e:
             debug(f"Skip cleanup error: {e}")
 
-# ==========================================================
-# 🔁 Upload Cycle
-# ==========================================================
+# -------------------------------------------------------------------
+# 🔁 Upload cycle
+# -------------------------------------------------------------------
 def upload_cycle(token):
     root_folder = f"data_{fake.word()}"
     sub_folder = f"{root_folder}/{fake.word()}_{fake.random_int(1,100)}"
@@ -592,7 +594,7 @@ def upload_cycle(token):
     uploaded_mb = 0
     uploaded_files = 0
 
-    log(f"🚀 Upload phase started for {UPLOAD_MINUTES} minutes.")
+    log(f"🚀 Upload phase {UPLOAD_MINUTES} min started.")
     while datetime.utcnow() < end_time:
         tmp_file = os.path.join(tempfile.gettempdir(), f"{fake.word()}.bin")
         size_mb = create_large_file_safe(tmp_file, MIN_FILE_MB, MAX_FILE_MB)
@@ -604,26 +606,25 @@ def upload_cycle(token):
             metrics["files_uploaded"] += 1
             metrics["mb_uploaded"] += size_mb
             metrics["last_upload"] = datetime.utcnow().isoformat()
-            debug(f"Upload successful ({size_mb} MB).")
         elif code in ("401", "403"):
-            log("🔐 Auth expired — refreshing token...")
+            log("🔐 Token invalid — re-login.")
             token = get_api_token()
             continue
         else:
-            debug(f"Upload failed with code {code}")
+            debug(f"Upload failed HTTP {code}")
 
         time.sleep(UPLOAD_DELAY_SEC)
 
-    log(f"✅ Upload cycle done: {uploaded_files} files ({uploaded_mb} MB)")
+    log(f"✅ Cycle done: {uploaded_files} files ({uploaded_mb} MB)")
     if CLEAN_TMP:
         cleanup_tmp()
-    log(f"🕒 Cooling down for {COOLDOWN_MINUTES} minutes...\n")
+    log(f"🕒 Cooling {COOLDOWN_MINUTES} min …\n")
     time.sleep(COOLDOWN_MINUTES * 60)
     return token
 
-# ==========================================================
+# -------------------------------------------------------------------
 # 🧠 Main
-# ==========================================================
+# -------------------------------------------------------------------
 if __name__ == "__main__":
     start_metrics_server()
     token = get_api_token()
