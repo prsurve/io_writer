@@ -172,12 +172,19 @@ def upload_cycle(token, iteration, last_upload_time):
         if code in ("401", "403"):
             log("🔐 Token expired — re-login.")
             token = get_api_token()
-            continue
-        elif code == "200" or code == "201":
+        elif code in ("200", "201"):
             last_upload_time = datetime.utcnow()
         else:
             log(f"⚠️ Upload failed (HTTP {code})")
-
+        
+        # 🧹 Clean up temp file if enabled
+        if CONFIG.get("CLEAN_TMP", True):
+            try:
+                os.remove(tmp_file)
+                debug(f"🧹 Deleted temp file {tmp_file}")
+            except Exception as e:
+                debug(f"⚠️ Could not delete temp file {tmp_file}: {e}")
+        
         time.sleep(delay_sec)
 
     log(f"🕒 Cooling down {cooldown_minutes} min …")
