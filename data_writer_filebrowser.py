@@ -195,24 +195,48 @@ if __name__ == "__main__":
     last_upload_time = None
     total_iters = CONFIG.get("ITERATIONS", 0)
     last_config_snapshot = CONFIG.copy()
+    last_auth_attempt = datetime.utcnow()
+    retry_delay = 30
 
     while not stop_requested:
         CONFIG = load_config()
+        total_iters = CONFIG.get("ITERATIONS", 0)
 
         # Detect ConfigMap changes
         if CONFIG != last_config_snapshot:
             changed_keys = [k for k in CONFIG if CONFIG[k] != last_config_snapshot.get(k)]
             log(f"🔁 Detected ConfigMap change — updated: {', '.join(changed_keys)}")
             last_config_snapshot = CONFIG.copy()
-            total_iters = CONFIG.get("ITERATIONS", 0)
 
-        # Idle mode
-        if total_iters == 0:
-            log("💤 Idle mode active (ITERATIONS=0). Watching for config changes...")
+        # Retry login if down
+        if not token or not check_health():
+            if (datetime.utcnow() - last_auth_attempt).total_seconds() >= retry_delay:
+                log("[AUTH-RETRY] 🔄 Attempting to re-login to FileBrowser...")
+                token = get_api_token()
+                last_auth_attempt = datetime.utcnow()
+            if not token:
+                log("💤 Waiting for FileBrowser to become available...")
+                time.sleep(retry_delay)
+                retry_delay = min(retry_delay * 2, 300)
+                continue
+            else:
+                retry_delay = 30  # reset
+
+        # 💤 ITERATIONS = -1 → Pause mode
+        if total_iters == -1:
+            log("💤 Paused (ITERATIONS=-1). Watching for config changes...")
             time.sleep(30)
             continue
 
-        # Run upload cycles
+        # ♾️ ITERATIONS = 0 → Infinite mode
+        if total_iters == 0:
+            log("♾️ Infinite mode (ITERATIONS=0) — running continuous uploads.")
+            while not stop_requested:
+                token, last_upload_time = upload_cycle(token, iteration, last_upload_time)
+                iteration += 1
+            break
+
+        # 🧪 Finite mode
         log(f"🧪 Starting {total_iters} iteration(s).")
         iteration = 1
         while iteration <= total_iters and not stop_requested:
@@ -220,8 +244,7 @@ if __name__ == "__main__":
             token, last_upload_time = upload_cycle(token, iteration, last_upload_time)
             iteration += 1
 
-        log(f"✅ Completed {total_iters} iteration(s). Entering idle mode (watching for updates).")
-        total_iters = 0  # reset
+        log(f"✅ Completed {total_iters} iteration(s). Returning to watcher mode.")
         time.sleep(30)
 
     log("🛑 Graceful shutdown requested. Exiting...")
