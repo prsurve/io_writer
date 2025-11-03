@@ -3,83 +3,77 @@ name: Build Containers
 on: 
   pull_request:
     types:
-      # - closed
-      - opened
-      - reopened
-      - synchronize
-
-
+      - closed
 # on: pull_request
 env:
   REGISTRY_USER: ${{ secrets.QUAY_USER }}
   IMAGE_REGISTRY: quay.io/prsurve
   REGISTRY_PASSWORD: ${{ secrets.QUAY_SECRET }}
 jobs:
-  #  build_containers_mysql:
-  #     if: github.event.pull_request.merged == true
-  #     runs-on: ubuntu-latest
-  #     steps:
-  #     - name: Get Code
-  #       uses: actions/checkout@v3
-  #     - name: Set up QEMU
-  #       uses: docker/setup-qemu-action@v2.2.0
-  #     - name: Buildah Action
-  #       id: build-image
-  #       uses: redhat-actions/buildah-build@v2
-  #       with:
-  #         image: mysql_data_write
-  #         tags: ${{ github.base_ref }}
-  #         # archs: 386, amd64, arm/v6, arm/v7, arm64/v8, ppc64le, s390x
-  #         # archs: arm, arm64, 386, amd64, ppc64le, s390x
-  #         platforms: linux/386, linux/amd64, linux/arm/v6, linux/arm/v7, linux/arm64/v8, linux/ppc64le, linux/s390x
-  #         containerfiles: |
-  #           ./Dockerfile_mysql
-  #     - name: Push To quay.io
-  #       id: push-to-quay
-  #       uses: redhat-actions/push-to-registry@v2.7
-  #       with:
-  #         image: ${{ steps.build-image.outputs.image }}
-  #         tags: ${{ steps.build-image.outputs.tags }}
-  #         username: ${{ env.REGISTRY_USER }}
-  #         password: ${{ env.REGISTRY_PASSWORD }}
-  #         registry: ${{ env.IMAGE_REGISTRY }}
+   build_containers_mysql:
+      if: github.event.pull_request.merged == true
+      runs-on: ubuntu-latest
+      steps:
+      - name: Get Code
+        uses: actions/checkout@v3
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2.2.0
+      - name: Buildah Action
+        id: build-image
+        uses: redhat-actions/buildah-build@v2
+        with:
+          image: mysql_data_write
+          tags: ${{ github.base_ref }}
+          # archs: 386, amd64, arm/v6, arm/v7, arm64/v8, ppc64le, s390x
+          # archs: arm, arm64, 386, amd64, ppc64le, s390x
+          platforms: linux/386, linux/amd64, linux/arm/v6, linux/arm/v7, linux/arm64/v8, linux/ppc64le, linux/s390x
+          containerfiles: |
+            ./Dockerfile_mysql
+      - name: Push To quay.io
+        id: push-to-quay
+        uses: redhat-actions/push-to-registry@v2.7
+        with:
+          image: ${{ steps.build-image.outputs.image }}
+          tags: ${{ steps.build-image.outputs.tags }}
+          username: ${{ env.REGISTRY_USER }}
+          password: ${{ env.REGISTRY_PASSWORD }}
+          registry: ${{ env.IMAGE_REGISTRY }}
 
-  #     - name: Print image url
-  #       run: echo "Image pushed to ${{ steps.push-to-quay.outputs.registry-paths }}"
-  #  build_containers_mongodb:
-  #       if: github.event.pull_request.merged == true 
-  #       runs-on: ubuntu-latest
-  #       steps:
-  #       - name: Get Code
-  #         uses: actions/checkout@v3
-  #       - name: Set up QEMU
-  #         uses: docker/setup-qemu-action@v2.2.0
-  #       - name: Buildah Action
-  #         id: build-image
-  #         uses: redhat-actions/buildah-build@v2
-  #         with:
-  #           image: mongodb_data_write
-  #           tags: ${{ github.base_ref }}
-  #           # archs: 386, amd64, arm/v6, arm/v7, arm64/v8, ppc64le, s390x
-  #           # archs: arm, arm64, 386, amd64, ppc64le, s390x
-  #           platforms: linux/386, linux/amd64, linux/arm/v6, linux/arm/v7, linux/arm64/v8, linux/ppc64le, linux/s390x
-  #           containerfiles: |
-  #               ./Dockerfile_mongodb
-  #       - name: Push To quay.io
-  #         id: push-to-quay
-  #         uses: redhat-actions/push-to-registry@v2.7
-  #         with:
-  #           image: ${{ steps.build-image.outputs.image }}
-  #           tags: ${{ steps.build-image.outputs.tags }}
-  #           username: ${{ env.REGISTRY_USER }}
-  #           password: ${{ env.REGISTRY_PASSWORD }}
-  #           registry: ${{ env.IMAGE_REGISTRY }}
+      - name: Print image url
+        run: echo "Image pushed to ${{ steps.push-to-quay.outputs.registry-paths }}"
+   build_containers_mongodb:
+        if: github.event.pull_request.merged == true 
+        runs-on: ubuntu-latest
+        steps:
+        - name: Get Code
+          uses: actions/checkout@v3
+        - name: Set up QEMU
+          uses: docker/setup-qemu-action@v2.2.0
+        - name: Buildah Action
+          id: build-image
+          uses: redhat-actions/buildah-build@v2
+          with:
+            image: mongodb_data_write
+            tags: ${{ github.base_ref }}
+            # archs: 386, amd64, arm/v6, arm/v7, arm64/v8, ppc64le, s390x
+            # archs: arm, arm64, 386, amd64, ppc64le, s390x
+            platforms: linux/386, linux/amd64, linux/arm/v6, linux/arm/v7, linux/arm64/v8, linux/ppc64le, linux/s390x
+            containerfiles: |
+                ./Dockerfile_mongodb
+        - name: Push To quay.io
+          id: push-to-quay
+          uses: redhat-actions/push-to-registry@v2.7
+          with:
+            image: ${{ steps.build-image.outputs.image }}
+            tags: ${{ steps.build-image.outputs.tags }}
+            username: ${{ env.REGISTRY_USER }}
+            password: ${{ env.REGISTRY_PASSWORD }}
+            registry: ${{ env.IMAGE_REGISTRY }}
     
-  #       - name: Print image url
-  #         run: echo "Image pushed to ${{ steps.push-to-quay.outputs.registry-paths }}"
+        - name: Print image url
+          run: echo "Image pushed to ${{ steps.push-to-quay.outputs.registry-paths }}"
    build_containers_filebrowser:
-      # if: github.event.pull_request.merged == true
-      # if: github.event.pull_request.created == true
+      if: github.event.pull_request.merged == trues
       runs-on: ubuntu-latest
       steps:
       - name: Get Code
@@ -94,8 +88,8 @@ jobs:
           tags: ${{ github.sha }}
           # archs: 386, amd64, arm/v6, arm/v7, arm64/v8, ppc64le, s390x
           # archs: arm, arm64, 386, amd64, ppc64le, s390x
-          # platforms: linux/386, linux/amd64, linux/arm/v6, linux/arm/v7, linux/arm64/v8, linux/ppc64le, linux/s390x
-          platforms: linux/amd64
+          platforms: linux/386, linux/amd64, linux/arm/v6, linux/arm/v7, linux/arm64/v8, linux/ppc64le, linux/s390x
+          # platforms: linux/amd64
           containerfiles: |
             ./Dockerfile_filebrowser
       - name: Push To quay.io
