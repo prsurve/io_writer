@@ -208,19 +208,25 @@ if __name__ == "__main__":
             log(f"🔁 Detected ConfigMap change — updated: {', '.join(changed_keys)}")
             last_config_snapshot = CONFIG.copy()
 
-        # Retry login if down
+        # 🧩 Handle login retry if FileBrowser unreachable
         if not token or not check_health():
-            if (datetime.utcnow() - last_auth_attempt).total_seconds() >= retry_delay:
-                log("[AUTH-RETRY] 🔄 Attempting to re-login to FileBrowser...")
-                token = get_api_token()
-                last_auth_attempt = datetime.utcnow()
+            log("[AUTH] ⚠️ FileBrowser unreachable, starting health retry loop...")
+            while not stop_requested:
+                if check_health():
+                    log("[AUTH] ✅ FileBrowser reachable again — logging in...")
+                    token = get_api_token()
+                    if token:
+                        log("[AUTH] 🔓 Login successful — resuming operations.")
+                        retry_delay = 30
+                        break
+                else:
+                    log("[AUTH] ⏳ Still unreachable, re-checking in 10 s...")
+                time.sleep(10)
             if not token:
-                log("💤 Waiting for FileBrowser to become available...")
+                log("💤 Still no token, retrying later...")
                 time.sleep(retry_delay)
                 retry_delay = min(retry_delay * 2, 300)
                 continue
-            else:
-                retry_delay = 30  # reset
 
         # 💤 ITERATIONS = -1 → Pause mode
         if total_iters == -1:
