@@ -1,5 +1,5 @@
-FROM alpine:latest
-RUN apk add --no-cache python3 py3-pip bash
-RUN pip install pymongo Faker
+FROM python:3.11-alpine
+RUN apk add --no-cache bash
+RUN pip install --no-cache-dir pymongo Faker
 RUN  mkdir /script
 COPY data_writer_mongodb.py /script/db.py
